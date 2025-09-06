@@ -1,17 +1,40 @@
 # Minimal LangExtract example: extract structured entities from text
 
-# pip install langextract
-
 import os
 import json
+import sys
 import textwrap
+from pathlib import Path
 import langextract as lx
 
-# Prefer unified key; fall back to GEMINI_API_KEY if already set
+def setup_api_key():
+    """Setup the API key for LangExtract"""
+    api_key = os.getenv("LANGEXTRACT_API_KEY")
+    if not api_key:
+        # Try loading from .env file if it exists
+        env_path = Path(__file__).parent / '.env'
+        if env_path.exists():
+            with open(env_path) as f:
+                for line in f:
+                    if line.startswith('LANGEXTRACT_API_KEY='):
+                        api_key = line.split('=', 1)[1].strip()
+                        os.environ["LANGEXTRACT_API_KEY"] = api_key
+                        break
+    
+    # If still no API key, check GEMINI_API_KEY
+    if not api_key:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if api_key:
+            os.environ["LANGEXTRACT_API_KEY"] = api_key
+    
+    if not api_key:
+        print("Error: No API key found. Please set LANGEXTRACT_API_KEY in your environment or .env file")
+        print("You can get an API key from: https://cloud.google.com/vertex-ai/docs/generative-ai/access-api")
+        sys.exit(1)
 
+# Setup API key before proceeding
+setup_api_key()
 
-if not os.getenv("LANGEXTRACT_API_KEY") and os.getenv("GEMINI_API_KEY"):
-    os.environ["LANGEXTRACT_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
 # 1) Define the extraction task (prompt + few-shot example)
 prompt = textwrap.dedent("""\
