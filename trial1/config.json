@@ -1,0 +1,46 @@
+{
+    "extraction_config": {
+        "prompt": "Extract fund information including ISIN, Asset Class, Total Expense Ratio (TER), and Issuing Company.\nExtract exact text for these fields. Do not paraphrase. Include any relevant contextual information in attributes.\nLabel fields as:\n- isin: ISIN code\n- asset_class: Type of asset or investment\n- expense_ratio: Total Expense Ratio (TER)\n- issuer: Fund issuing company",
+        "max_workers": 1,
+        "extraction_passes": 1,
+        "chunk_overlap": 200,
+        "examples": [
+            {
+                "text": "iShares Physical Gold ETC\nISSUER: BlackRock Asset Management\nISIN: IE00B4ND3602\nAsset Class: Commodities - Precious Metals\nTotal Expense Ratio (TER): 0.12% per annum",
+                "extractions": [
+                    {
+                        "extraction_class": "isin",
+                        "extraction_text": "IE00B4ND3602",
+                        "attributes": {
+                            "type": "ETC"
+                        }
+                    },
+                    {
+                        "extraction_class": "asset_class",
+                        "extraction_text": "Commodities - Precious Metals",
+                        "attributes": {
+                            "specific": "Gold"
+                        }
+                    },
+                    {
+                        "extraction_class": "expense_ratio",
+                        "extraction_text": "0.12% per annum",
+                        "attributes": {
+                            "type": "TER"
+                        }
+                    },
+                    {
+                        "extraction_class": "issuer",
+                        "extraction_text": "BlackRock Asset Management",
+                        "attributes": {
+                            "brand": "iShares"
+                        }
+                    }
+                ]
+            }
+        ],
+        "model_id": "gemini-2.5-flash",
+        "max_chunk_size": 8000,
+        "output_path": "fund_extractions.jsonl"
+    }
+}
