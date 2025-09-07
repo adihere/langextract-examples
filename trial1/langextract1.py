@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
 import PyPDF2
 import langextract as lx
+from langextract.providers.openai import OpenAILanguageModel
 import logging
 
 # Configure logging
@@ -61,33 +62,52 @@ def read_pdf(pdf_path: str, start_page: int = 0, end_page: Optional[int] = None)
         print(f"Error reading PDF file: {str(e)}")
         sys.exit(1)
 
-def setup_api_key():
-    """Setup the API key for LangExtract"""
-    api_key = os.getenv("LANGEXTRACT_API_KEY")
-    if not api_key:
-        # Try loading from .env file if it exists
-        env_path = Path(__file__).parent / '.env'
-        if env_path.exists():
-            with open(env_path) as f:
-                for line in f:
-                    if line.startswith('LANGEXTRACT_API_KEY='):
-                        api_key = line.split('=', 1)[1].strip()
-                        os.environ["LANGEXTRACT_API_KEY"] = api_key
-                        break
+class MistralModel(OpenAILanguageModel):
+    """Custom OpenAI-compatible model for Mistral AI"""
+    pass
+
+def setup_model(config: Dict[str, Any]) -> MistralModel:
+    """
+    Setup the Mistral model using OpenAI-compatible API
     
-    # If still no API key, check GEMINI_API_KEY
-    if not api_key:
-        api_key = os.getenv("GEMINI_API_KEY")
-        if api_key:
-            os.environ["LANGEXTRACT_API_KEY"] = api_key
-    
-    if not api_key:
-        print("Error: No API key found. Please set LANGEXTRACT_API_KEY in your environment or .env file")
-        print("You can get an API key from: https://cloud.google.com/vertex-ai/docs/generative-ai/access-api")
+    Args:
+        config: Configuration dictionary containing model settings
+        
+    Returns:
+        Configured MistralModel instance
+    """
+    try:
+        # Get API key from environment or .env file
+        api_key = os.getenv("MISTRAL_API_KEY")
+        if not api_key:
+            env_path = Path(__file__).parent / '.env'
+            if env_path.exists():
+                with open(env_path) as f:
+                    for line in f:
+                        if line.startswith('MISTRAL_API_KEY='):
+                            api_key = line.split('=', 1)[1].strip()
+                            break
+        
+        if not api_key:
+            logger.error("No Mistral API key found. Please set MISTRAL_API_KEY in your environment or .env file")
+            logger.error("You can get an API key from: https://console.mistral.ai/")
+            sys.exit(1)
+            
+        # Create model instance with settings from config
+        model_settings = config.get('model_settings', {})
+        model = MistralModel(
+            model_id=model_settings.get('model_id', 'mistral-small-latest'),
+            api_key=api_key,
+            base_url=model_settings.get('base_url', 'https://api.mistral.ai/v1')
+        )
+        
+        logger.info(f"Successfully configured Mistral model: {model_settings.get('model_id')}")
+        return model
+        
+    except Exception as e:
+        logger.error(f"Error setting up Mistral model: {str(e)}")
         sys.exit(1)
 
-# Setup API key before proceeding
-setup_api_key()
 
 
 # Load configuration from JSON file
@@ -113,14 +133,16 @@ def load_config(config_path: str = 'config.json') -> Dict:
 # Load configuration
 config = load_config()
 prompt = config['prompt']
-model_id = config['model_id']
 max_chunk_size = config['max_chunk_size']
-max_workers = config.get('max_workers', 1)  # Default to 2 workers
-extraction_passes = config.get('extraction_passes', 1)  # Default to 1 pass
-chunk_overlap = config.get('chunk_overlap', 200)  # Default to 200 characters overlap
+max_workers = config.get('max_workers', 1)
+extraction_passes = config.get('extraction_passes', 1)
+chunk_overlap = config.get('chunk_overlap', 200)
 
 # Set environment variables to control LangExtract parallelism
 os.environ['LANGEXTRACT_MAX_WORKERS'] = str(max_workers)
+
+# Setup Mistral model
+model = setup_model(config)
 
 # Convert JSON examples to LangExtract ExampleData objects
 examples = [
@@ -197,7 +219,9 @@ def process_pdf(pdf_path: str, start_page: int = 0, end_page: Optional[int] = No
                         text_or_documents=chunk,
                         prompt_description=prompt,
                         examples=examples,
-                        model_id=model_id,
+                        model=model,
+                        fence_output=config.get('model_settings', {}).get('fence_output', True),
+                        use_schema_constraints=config.get('model_settings', {}).get('use_schema_constraints', False)
                     )
                     
                     # Filter out duplicate extractions

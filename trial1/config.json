@@ -1,12 +1,18 @@
 {
     "extraction_config": {
-        "prompt": "Extract fund information including ISIN, Asset Class, Total Expense Ratio (TER), and Issuing Company.\nExtract exact text for these fields. Do not paraphrase. Include any relevant contextual information in attributes.\nLabel fields as:\n- isin: ISIN code\n- asset_class: Type of asset or investment\n- expense_ratio: Total Expense Ratio (TER)\n- issuer: Fund issuing company",
-        "max_workers": 1,
-        "extraction_passes": 1,
+        "prompt": "Extract following information only - ISIN, Asset Class, Total Expense Ratio (TER), and Issuing Company.\n Extract exact text for these fields. Do not paraphrase. Include any relevant contextual information in attributes.\nLabel fields as:\n- isin: ISIN code\n- asset_class: Type of asset or investment\n- expense_ratio: Total Expense Ratio (TER)\n- issuer: Fund issuing company \n Do not output fields that are not supported by the schema above \n ",
+        "max_workers": 2,
+        "extraction_passes": 3,
         "chunk_overlap": 200,
+        "model_settings": {
+            "model_id": "mistral-small-latest",
+            "base_url": "https://api.mistral.ai/v1/conversations",
+            "fence_output": true,
+            "use_schema_constraints": false
+        },
         "examples": [
             {
-                "text": "iShares Physical Gold ETC\nISSUER: BlackRock Asset Management\nISIN: IE00B4ND3602\nAsset Class: Commodities - Precious Metals\nTotal Expense Ratio (TER): 0.12% per annum",
+                "text": "GBP (Dist) Share Class \n ISIN: IE00B00FV128 Exchange Traded Fund (ETF)  \n Manager: BlackRock Asset Management Ireland Limited",
                 "extractions": [
                     {
                         "extraction_class": "isin",
@@ -39,7 +45,7 @@
                 ]
             }
         ],
-        "model_id": "gemini-2.5-flash",
+        "model_id": "mistral-small-latest",
         "max_chunk_size": 8000,
         "output_path": "fund_extractions.jsonl"
     }
